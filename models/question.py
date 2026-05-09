@@ -49,7 +49,7 @@ class Question(Base):
     source_segment: Mapped["TextSegment | None"] = relationship(  # type: ignore[name-defined]  # noqa: F821
         "TextSegment", back_populates="questions"
     )
-    results: Mapped[list] = relationship(
+    results: Mapped[list["QuestionResult"]] = relationship(  # type: ignore[name-defined]  # noqa: F821
         "QuestionResult", back_populates="question"
     )
 

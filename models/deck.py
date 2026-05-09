@@ -40,16 +40,16 @@ class Deck(Base):
     )
 
     # Relationships — FK references use string names to avoid circular imports.
-    cards: Mapped[list] = relationship(
+    cards: Mapped[list["Card"]] = relationship(  # type: ignore[name-defined]  # noqa: F821
         "Card", back_populates="deck", foreign_keys="Card.deck_id"
     )
-    questions: Mapped[list] = relationship(
+    questions: Mapped[list["Question"]] = relationship(  # type: ignore[name-defined]  # noqa: F821
         "Question", back_populates="deck", foreign_keys="Question.deck_id"
     )
-    quiz_sessions: Mapped[list] = relationship(
+    quiz_sessions: Mapped[list["QuizSession"]] = relationship(  # type: ignore[name-defined]  # noqa: F821
         "QuizSession", back_populates="deck", foreign_keys="QuizSession.deck_id"
     )
-    source_documents: Mapped[list] = relationship(
+    source_documents: Mapped[list["SourceDocument"]] = relationship(  # type: ignore[name-defined]  # noqa: F821
         "SourceDocument",
         secondary="deck_sources",
         back_populates="decks",

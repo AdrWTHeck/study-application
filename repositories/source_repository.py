@@ -38,6 +38,17 @@ class SourceRepository(BaseRepository[SourceDocument]):
             .count()
         )
 
+    def get_all_segments(self, source_id: int) -> list[TextSegment]:
+        return (
+            self._session.query(TextSegment)
+            .filter(TextSegment.source_document_id == source_id)
+            .order_by(TextSegment.page_number.asc(), TextSegment.segment_index.asc())
+            .all()
+        )
+
+    def get_segment(self, segment_id: int) -> TextSegment | None:
+        return self._session.get(TextSegment, segment_id)
+
     def get_question_count(self, source_id: int) -> int:
         from models.question import Question
         segment_ids = [

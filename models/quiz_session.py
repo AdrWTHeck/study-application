@@ -60,7 +60,7 @@ class QuizSession(Base):
     source_document: Mapped["SourceDocument | None"] = relationship(  # type: ignore[name-defined]  # noqa: F821
         "SourceDocument", back_populates="quiz_sessions", foreign_keys=[source_document_id]
     )
-    question_results: Mapped[list] = relationship(
+    question_results: Mapped[list["QuestionResult"]] = relationship(  # type: ignore[name-defined]  # noqa: F821
         "QuestionResult", back_populates="session"
     )
 

@@ -29,12 +29,12 @@ class SourceDocument(Base):
         back_populates="source_document",
         cascade="all, delete-orphan",
     )
-    decks: Mapped[list] = relationship(
+    decks: Mapped[list["Deck"]] = relationship(  # type: ignore[name-defined]  # noqa: F821
         "Deck",
         secondary="deck_sources",
         back_populates="source_documents",
     )
-    quiz_sessions: Mapped[list] = relationship(
+    quiz_sessions: Mapped[list["QuizSession"]] = relationship(  # type: ignore[name-defined]  # noqa: F821
         "QuizSession",
         back_populates="source_document",
         foreign_keys="QuizSession.source_document_id",
@@ -63,7 +63,7 @@ class TextSegment(Base):
     source_document: Mapped["SourceDocument"] = relationship(
         "SourceDocument", back_populates="text_segments"
     )
-    questions: Mapped[list] = relationship(
+    questions: Mapped[list["Question"]] = relationship(  # type: ignore[name-defined]  # noqa: F821
         "Question", back_populates="source_segment"
     )
 
