@@ -1,0 +1,10 @@
+{
+  "theme": "default",
+  "font_size": 12,
+  "dictionary_panel_floating": true,
+  "dictionary_panel_visible": false,
+  "tts_rate": 150,
+  "custom_colors": null,
+  "dictionary_shortcut": "Ctrl+D",
+  "tts_voice_id": null
+}
