@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Runtime user data (local-first; never committed)
+user_data/
+*.db
+*.db-shm
+*.db-wal
+
+# Packaging
+build/
+dist/
+*.spec
+
+# Dev preview artifacts
+tools/_preview/
+
+# Font packages — only properly-licensed runtime files should be added,
+# placed directly in assets/fonts/. Bulk download packages are not committed.
+assets/fonts/**
+!assets/fonts/README.md
+
+# OS / editor
+.DS_Store
+Thumbs.db
