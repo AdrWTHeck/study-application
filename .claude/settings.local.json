@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(\"C:\\\\Users\\\\aperez419\\\\OneDrive - Cal State LA\\\\general keep up\\\\study application\\\\.venv\\\\Scripts\\\\pip.exe\" install --pre PyAudio)"
+    ]
+  }
+}

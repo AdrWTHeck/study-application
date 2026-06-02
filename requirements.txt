@@ -1,11 +1,15 @@
-# Study Application — Sprint 1 dependencies (SRS §7.3)
-PyQt6>=6.5
-SQLAlchemy>=2.0
-PyMuPDF>=1.23          # PDF page rendering (fitz)
-pdfplumber>=0.10       # PDF text extraction
-spacy>=3.7             # NLP: tokenization, NER, POS, dependency parsing
-# en_core_web_sm — install separately: python -m spacy download en_core_web_sm
-nltk>=3.8              # WordNet lookups
-rapidfuzz>=3.0         # Fuzzy matching: answer evaluation + dictionary search
-pyttsx3>=2.90          # Text-to-speech
-PyAudio>=0.2           # Audio recording
+# Study App — Accessibility-First Redesign of Anki
+# Phase 1 foundation dependencies. Heavier phase-specific deps (PyMuPDF,
+# pdfplumber, PyAudio) are listed now but only exercised in later phases.
+
+PyQt6>=6.5          # native UI
+SQLAlchemy>=2.0     # ORM / local SQLite
+PyMuPDF>=1.23       # PDF rendering (Phase 3)
+pdfplumber>=0.10    # PDF text extraction (Phase 3)
+rapidfuzz>=3.0      # fuzzy short-answer grading (Phase 4)
+pyttsx3>=2.90       # offline text-to-speech (TTS-01/02)
+PyAudio>=0.2        # audio capture/playback (Phase 2/3)
+nltk>=3.8           # WordNet dictionary fallback
+
+# Dev / test
+pytest>=8.0

@@ -1,53 +1,68 @@
-"""Study Application — entry point.
+"""Study App — Accessibility-First Redesign of Anki. Entry point.
 
-Adds the project root to sys.path so all absolute imports resolve correctly,
-then runs the startup sequence.  Phase 5 will replace the placeholder with
-the real PyQt6 MainWindow.
+Boot order: resolve writable paths → load settings → create the Qt app → apply
+the accessibility-first theme → show the window. (Onboarding routing and the DB
+bootstrap are wired in as their Phase 1 pieces land.)
 """
 from __future__ import annotations
 
 import logging
 import sys
-from pathlib import Path
-
-# Ensure the project root (study_app/) is on sys.path regardless of where
-# the interpreter is invoked from.
-_ROOT = Path(__file__).resolve().parent
-if str(_ROOT) not in sys.path:
-    sys.path.insert(0, str(_ROOT))
-
-logging.basicConfig(
-    level=logging.DEBUG,
-    format="%(asctime)s  %(levelname)-8s  %(name)s  %(message)s",
-    datefmt="%H:%M:%S",
-)
-
-from services.core.startup import run
 
 
-def main() -> None:
-    result = run()
+def main() -> int:
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s  %(levelname)-7s %(name)s: %(message)s",
+    )
 
-    if not result.success:
-        # Phase 5 will show a PyQt6 dialog here.
-        print(
-            "[ERROR] Database integrity check failed.\n"
-            f"Most recent backup: {result.most_recent_backup}\n"
-            "Replace study_app.db with the backup and restart, or delete the\n"
-            "database to start fresh (all data will be lost)."
+    from PyQt6.QtWidgets import QApplication, QMessageBox
+
+    from app.main_window import MainWindow
+    from core.paths import assets_dir, get_app_paths
+    from core.settings import Settings
+    from core.startup import run_startup
+    from domain.accessibility.tts_service import TTSService
+    from ui.a11y.speech import FocusSpeaker
+    from ui.theme.fonts import load_application_fonts
+    from ui.theme.theme_controller import ThemeController
+
+    paths = get_app_paths()
+    settings = Settings.load(paths.settings_path)
+
+    app = QApplication(sys.argv)
+    app.setApplicationName("StudyApp")
+    app.setApplicationDisplayName("StudyApp")
+
+    load_application_fonts(assets_dir() / "fonts")
+    theme = ThemeController(settings)
+    theme.apply(app)
+
+    startup = run_startup(paths)
+    if not startup.success:
+        QMessageBox.critical(
+            None,
+            "StudyApp — database problem",
+            "The study database failed its integrity check and could not be opened.\n\n"
+            f"Most recent backup: {startup.most_recent_backup or 'none found'}\n\n"
+            "Restore a backup from the backups folder, then relaunch.",
         )
-        sys.exit(1)
+        return 1
 
-    if result.pending_sessions:
-        # Phase 5 will show a resume/discard dialog here.
-        print(
-            f"[INFO] {len(result.pending_sessions)} in-progress session(s) found.\n"
-            "       Resume/discard UI will be implemented in Phase 5."
-        )
+    tts = TTSService()
+    tts.set_rate(int(settings.get("tts_rate")))
+    # Kept referenced for the app's lifetime so the focus→speech hook stays live.
+    focus_speaker = FocusSpeaker(app, tts, settings)  # noqa: F841
 
-    # Phase 5 — launch PyQt6 MainWindow here.
-    print("[OK] Startup complete.  MainWindow will launch in Phase 5.")
+    if not settings.get("onboarding_complete"):
+        from app.onboarding import OnboardingDialog
+
+        OnboardingDialog(settings, tts).exec()
+
+    window = MainWindow(settings, theme, paths, startup.db, tts)
+    window.show()
+    return app.exec()
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
