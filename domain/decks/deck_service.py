@@ -10,6 +10,7 @@ from core.clock import now
 from data.models import Deck, Tag
 from data.repositories.card_repository import CardRepository
 from data.repositories.deck_repository import DeckRepository
+from domain.decks.hierarchy import SEP, build_tree, display_name, is_child_of, split_path
 
 
 @dataclass
@@ -93,3 +94,60 @@ class DeckService:
                             learning=counts["learning"], review=counts["review"])
             )
         return summaries
+
+    # ── Hierarchy helpers ─────────────────────────────────────────────────────
+
+    def subtree_ids(self, name: str, deck_type: str = "card") -> list[int]:
+        """Return IDs of all decks whose name equals *name* or is nested under it.
+
+        "Science" → IDs of Science, Science::Biology, Science::Biology::Genetics …
+        """
+        return [d.id for d in self.decks.by_name_prefix(name, deck_type)]
+
+    def aggregated_counts(self, name: str, deck_type: str = "card") -> dict[str, int]:
+        """Sum New/Learning/Review counts for *name* and all its descendants."""
+        ids = self.subtree_ids(name, deck_type)
+        return self.cards.state_counts_multi(ids)
+
+    def list_summaries_tree(self, deck_type: str = "card") -> list[dict]:
+        """Return summaries arranged as a tree using the build_tree helper.
+
+        Each node in the returned tree has the standard build_tree shape:
+            {
+                "segment":  "Biology",
+                "path":     "Science::Biology",
+                "data":     DeckSummary | None,   # None for virtual parents
+                "children": [...],
+                "agg":      {"new": N, "learning": N, "review": N},
+            }
+
+        The "agg" dict is the aggregated count for the node and ALL descendants,
+        so virtual parents get meaningful counts for display in the deck tree.
+        """
+        leaf_summaries = self.list_summaries(deck_type)
+        # Build the raw tree from deck names as paths
+        items = [{"path": s.deck.name, "summary": s} for s in leaf_summaries]
+        roots = build_tree(items, path_key="path")
+
+        # Annotate each node with aggregated counts (bottom-up)
+        def _annotate(node: dict) -> None:
+            for child in node["children"]:
+                _annotate(child)
+            item = node.get("data")
+            if item is not None:
+                # Real deck — own counts
+                s: DeckSummary = item["summary"]
+                own = {"new": s.new, "learning": s.learning, "review": s.review}
+            else:
+                own = {"new": 0, "learning": 0, "review": 0}
+            # Add children's aggregated counts
+            agg = dict(own)
+            for child in node["children"]:
+                for k in ("new", "learning", "review"):
+                    agg[k] += child["agg"][k]
+            node["agg"] = agg
+
+        for root in roots:
+            _annotate(root)
+
+        return roots

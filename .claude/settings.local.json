@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(\"C:\\\\Users\\\\aperez419\\\\OneDrive - Cal State LA\\\\general keep up\\\\study application\\\\.venv\\\\Scripts\\\\pip.exe\" install --pre PyAudio)"
+      "Bash(\"C:\\\\Users\\\\aperez419\\\\OneDrive - Cal State LA\\\\general keep up\\\\study application\\\\.venv\\\\Scripts\\\\pip.exe\" install --pre PyAudio)",
+      "Read(//c/Users/ADRIAN~1/AppData/Local/Temp/claude/C--Users-Adrian-PG-OneDrive-Desktop-general-keep-up-study-application/a6ae9ee8-ffec-43ef-b29d-48da2ebc2de4/scratchpad/ui_redesign/**)"
     ]
   }
 }

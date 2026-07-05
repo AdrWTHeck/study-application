@@ -4,7 +4,15 @@ from __future__ import annotations
 from sqlalchemy import func, select
 
 from data.db import Database
-from data.models import CardTemplate, Deck, Field, NoteType
+from data.models import CardTemplate, Deck, Field, NoteFlag, NoteType
+
+# Built-in note flags: (name, color). Quality/status labels, editable in Settings.
+_BUILTIN_FLAGS = [
+    ("Incomplete", "#fab005"),
+    ("Confusing definition", "#fd7e14"),
+    ("Needs example", "#4dabf7"),
+    ("Wrong", "#fa5252"),
+]
 
 
 def seed_defaults(db: Database) -> None:
@@ -16,6 +24,11 @@ def seed_defaults(db: Database) -> None:
         )
         if not has_default:
             session.add(Deck(name="Default", deck_type="card", is_default=True))
+        if session.scalar(select(func.count()).select_from(NoteFlag)) == 0:
+            session.add_all(
+                NoteFlag(name=name, color=color, ordinal=i, is_builtin=True)
+                for i, (name, color) in enumerate(_BUILTIN_FLAGS)
+            )
 
 
 def _builtin_note_types() -> list[NoteType]:

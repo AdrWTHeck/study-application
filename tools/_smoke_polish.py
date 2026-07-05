@@ -19,12 +19,15 @@ from data.models import Deck, NoteType  # noqa: E402
 from data.seed import seed_defaults  # noqa: E402
 from domain.decks.deck_service import DeckService  # noqa: E402
 from domain.notes.note_service import NoteService  # noqa: E402
-from domain.srs import Sm2Engine  # noqa: E402
+from domain.srs import make_engine  # noqa: E402
+from core.paths import assets_dir  # noqa: E402
+from ui.theme.fonts import load_application_fonts  # noqa: E402
 from ui.theme.theme_controller import ThemeController  # noqa: E402
 from ui.views.cards_view import CardsView  # noqa: E402
 from ui.views.notes_view import NotesView  # noqa: E402
 
 app = QApplication([])
+load_application_fonts(assets_dir() / "fonts")
 tmp = Path(tempfile.mkdtemp())
 db = Database(tmp / "app.db")
 db.create_all()
@@ -34,7 +37,7 @@ with db.session() as s:
     deck = s.scalar(select(Deck).where(Deck.is_default.is_(True)))
     basic = s.scalar(select(NoteType).where(NoteType.name == "Basic"))
     DeckService(s).set_color(deck.id, "#e67700")
-    notes = NoteService(s, Sm2Engine())
+    notes = NoteService(s, make_engine())
     for i in range(3):
         notes.create_note(deck.id, basic.id, {"Front": f"Capital of country {i}?", "Back": f"City {i}"})
     DeckService(s).create("French Vocabulary")
@@ -42,7 +45,7 @@ with db.session() as s:
 
 settings = Settings.load(tmp / "s.json")
 settings.set("mode", "advanced")
-ctx = AppContext(db=db, engine=Sm2Engine(), settings=settings, tts=None)
+ctx = AppContext(db=db, engine=make_engine(), settings=settings, tts=None)
 theme = ThemeController(settings)
 theme.apply(app)
 
@@ -54,7 +57,7 @@ cards.resize(940, 560)
 cards.show()
 app.processEvents()
 cards.grab().save(str(out / "deck_browser_advanced.png"))
-print("deck_browser_advanced.png; new-type btn hidden:", cards._new_type_btn.isHidden())
+print("deck_browser_advanced.png; new-type action visible:", cards._new_type_action.isVisible())
 
 notes = NotesView(ctx)
 notes.resize(940, 560)

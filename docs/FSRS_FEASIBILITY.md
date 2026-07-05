@@ -1,5 +1,8 @@
 # FSRS Feasibility Spike
 
+> **Superseded:** FSRS is now the **only** scheduler — SM-2 has been removed. The
+> historical spike below is kept for context.
+>
 > Date: 2026-05-31 · Verdict: **FEASIBLE — low-risk drop-in.** Spike run against
 > the live venv (Python 3.14). FSRS remains *future/optional*; SM-2 still ships
 > first (see [OVERHAUL_PLAN.md](OVERHAUL_PLAN.md)).

@@ -30,6 +30,14 @@ def test_prefix_search_is_sorted_and_case_insensitive(tmp_path):
     assert svc.prefix_search("BA") == ["banana"]
 
 
+def test_prefix_search_supports_substring_and_fuzzy_matches(tmp_path):
+    svc = _build(tmp_path)
+    assert svc.prefix_search("ppl") == ["apple", "apply"]
+    fuzzy = svc.prefix_search("aple")
+    assert "apple" in fuzzy
+    assert "apply" in fuzzy
+
+
 def test_lookup_returns_senses_and_examples(tmp_path):
     svc = _build(tmp_path)
     result = svc.lookup("Apple")

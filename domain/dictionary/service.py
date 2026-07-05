@@ -49,13 +49,64 @@ class DictionaryService:
         prefix = prefix.strip()
         if not prefix or not self._available:
             return []
+        out: list[str] = []
+        seen: set[str] = set()
         with self._connect() as conn:
+            # 1) exact prefix matches (indexed)
             rows = conn.execute(
                 "SELECT DISTINCT word FROM entries "
                 "WHERE word_lower LIKE ? ORDER BY word_lower LIMIT ?",
                 (prefix.lower() + "%", limit),
             ).fetchall()
-        return [row["word"] for row in rows]
+            for row in rows:
+                w = row["word"]
+                out.append(w)
+                seen.add(w.lower())
+            if len(out) >= limit:
+                return out[:limit]
+
+            # 2) substring matches (contain the prefix anywhere), excluding already seen words
+            rem = limit - len(out)
+            if seen:
+                placeholders = ",".join(["?"] * len(seen))
+                params = ["%" + prefix.lower() + "%", *list(seen), rem]
+                query = (
+                    "SELECT DISTINCT word FROM entries "
+                    "WHERE word_lower LIKE ? AND word_lower NOT IN (" + placeholders + ") "
+                    "ORDER BY word_lower LIMIT ?"
+                )
+            else:
+                params = ("%" + prefix.lower() + "%", rem)
+                query = (
+                    "SELECT DISTINCT word FROM entries "
+                    "WHERE word_lower LIKE ? ORDER BY word_lower LIMIT ?"
+                )
+            rows = conn.execute(query, tuple(params)).fetchall()
+            for row in rows:
+                w = row["word"]
+                lw = w.lower()
+                if lw not in seen:
+                    out.append(w)
+                    seen.add(lw)
+            if len(out) >= limit:
+                return out[:limit]
+
+            # 3) fuzzy matches via python difflib for a small candidate set
+            try:
+                import difflib
+
+                rem = limit - len(out)
+                pat = prefix.lower()[:2] + "%" if len(prefix) >= 2 else prefix.lower() + "%"
+                cand_rows = conn.execute(
+                    "SELECT DISTINCT word FROM entries WHERE word_lower LIKE ? LIMIT 2000",
+                    (pat,),
+                ).fetchall()
+                candidates = [r["word"] for r in cand_rows if r["word"].lower() not in seen]
+                matches = difflib.get_close_matches(prefix, candidates, n=rem, cutoff=0.65)
+                out.extend(matches)
+            except Exception:
+                pass
+        return out[:limit]
 
     # -- exact lookup -------------------------------------------------------
 

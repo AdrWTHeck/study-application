@@ -2,13 +2,13 @@ from sqlalchemy import select
 
 from data.models import Deck, NoteType
 from domain.notes.note_service import NoteService
-from domain.srs import Sm2Engine
+from domain.srs import make_engine
 
 
 def _context(session):
     deck = session.scalar(select(Deck).where(Deck.is_default.is_(True)))
     types = {nt.name: nt.id for nt in session.scalars(select(NoteType))}
-    return deck.id, types, NoteService(session, Sm2Engine())
+    return deck.id, types, NoteService(session, make_engine())
 
 
 def test_basic_generates_one_card(db):

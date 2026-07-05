@@ -3,7 +3,7 @@ from sqlalchemy import select
 from data.models import Deck, NoteType
 from domain.decks.deck_service import DeckService
 from domain.notes.note_service import NoteService
-from domain.srs import Sm2Engine
+from domain.srs import make_engine
 
 
 def test_create_and_list(db):
@@ -18,7 +18,7 @@ def test_counts_reflect_new_cards(db):
     with db.session() as s:
         deck = s.scalar(select(Deck).where(Deck.is_default.is_(True)))
         basic = s.scalar(select(NoteType).where(NoteType.name == "Basic"))
-        notes = NoteService(s, Sm2Engine())
+        notes = NoteService(s, make_engine())
         notes.create_note(deck.id, basic.id, {"Front": "Q", "Back": "A"})
         notes.create_note(deck.id, basic.id, {"Front": "Q2", "Back": "A2"})
         summary = next(x for x in DeckService(s).list_summaries() if x.deck.id == deck.id)

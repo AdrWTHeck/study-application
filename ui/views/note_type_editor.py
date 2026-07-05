@@ -83,14 +83,20 @@ class NoteTypeEditor(QDialog):
         if not fields:
             QMessageBox.warning(self, "New note type", "Please add at least one field.")
             return
-        with self._context.db.session() as session:
-            if NoteTypeRepository(session).by_name(name) is not None:
-                QMessageBox.warning(self, "New note type", f"A note type named “{name}” already exists.")
-                return
-            NoteTypeService(session).create_type(
-                name,
-                fields,
-                [("Card 1", self.front_input.toPlainText(), self.back_input.toPlainText())],
-                is_cloze=self.cloze_check.isChecked(),
-            )
+        if self._context.db is None:
+            return
+        try:
+            with self._context.db.session() as session:
+                if NoteTypeRepository(session).by_name(name) is not None:
+                    QMessageBox.warning(self, "New note type", f"A note type named “{name}” already exists.")
+                    return
+                NoteTypeService(session).create_type(
+                    name,
+                    fields,
+                    [("Card 1", self.front_input.toPlainText(), self.back_input.toPlainText())],
+                    is_cloze=self.cloze_check.isChecked(),
+                )
+        except Exception:
+            QMessageBox.warning(self, "New note type", "Couldn't create the note type. Please try again.")
+            return
         self.accept()

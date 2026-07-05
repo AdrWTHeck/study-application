@@ -25,3 +25,10 @@ class ReviewLog(Base):
     new_ease: Mapped[float] = mapped_column(Float, default=0.0)
     elapsed_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     reviewed_at: Mapped[datetime] = mapped_column(DateTime, default=now)
+    # FSRS memory-model snapshot (nullable; populated when the FSRS engine is
+    # active — feeds an optional future optimizer and richer stats).
+    scheduler_name: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    prev_stability: Mapped[float | None] = mapped_column(Float, nullable=True)
+    new_stability: Mapped[float | None] = mapped_column(Float, nullable=True)
+    prev_difficulty: Mapped[float | None] = mapped_column(Float, nullable=True)
+    new_difficulty: Mapped[float | None] = mapped_column(Float, nullable=True)

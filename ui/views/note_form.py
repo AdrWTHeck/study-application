@@ -18,6 +18,7 @@ from PyQt6.QtWidgets import (
 )
 
 from app.context import AppContext
+from ui.utils.layouts import clear_layout
 from data.repositories.deck_repository import DeckRepository
 from data.repositories.note_repository import NoteRepository
 from data.repositories.note_type_repository import NoteTypeRepository
@@ -30,6 +31,7 @@ class AddNoteDialog(QDialog):
         context: AppContext,
         deck_id: int | None = None,
         note_id: int | None = None,
+        initial_values: dict[str, str] | None = None,
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
@@ -49,6 +51,10 @@ class AddNoteDialog(QDialog):
         edit_type_id: int | None = None
         edit_deck_id: int | None = deck_id
 
+        if context.db is None:
+            self.reject()
+            return
+
         with context.db.session() as session:
             for note_type in NoteTypeRepository(session).all_ordered():
                 self._types.append((note_type.id, note_type.name))
@@ -62,6 +68,8 @@ class AddNoteDialog(QDialog):
                     edit_deck_id = note.deck_id
                     self._prefill = note.values_by_field_name()
                     self._tags_prefill = ", ".join(t.name for t in note.tags)
+        if not editing and initial_values:
+            self._prefill = dict(initial_values)
 
         root = QVBoxLayout(self)
         root.setContentsMargins(24, 20, 24, 20)
@@ -123,11 +131,7 @@ class AddNoteDialog(QDialog):
                 return
 
     def _rebuild_fields(self) -> None:
-        while self._fields_layout.count():
-            item = self._fields_layout.takeAt(0)
-            widget = item.widget()
-            if widget is not None:
-                widget.deleteLater()
+        clear_layout(self._fields_layout)
         self._field_inputs = {}
         if not self._types:
             return
@@ -147,13 +151,15 @@ class AddNoteDialog(QDialog):
             return
         values = {name: editor.toPlainText() for name, editor in self._field_inputs.items()}
         tags = [t.strip() for t in self.tags_input.text().split(",") if t.strip()]
+        if self._context.db is None:
+            return
         with self._context.db.session() as session:
             service = NoteService(session, self._context.engine)
             if self._note_id is not None:
                 note = NoteRepository(session).get(self._note_id)
                 if note is not None:
                     service.update_values(note, values)
-                    note.tags = [service._get_or_create_tag(t) for t in tags]
+                    service.set_tags(note, tags)
             else:
                 type_id = self._types[self.type_combo.currentIndex()][0]
                 deck_id = self._decks[self.deck_combo.currentIndex()][0]

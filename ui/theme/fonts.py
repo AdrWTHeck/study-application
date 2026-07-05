@@ -14,8 +14,10 @@ from PyQt6.QtGui import QFontDatabase
 
 logger = logging.getLogger(__name__)
 
-# Most-preferred (dyslexia-friendly) first, then safe cross-platform sans faces.
+# The redesign's bundled UI face first, then the dyslexia-friendly options,
+# then safe cross-platform sans faces.
 FALLBACK_CHAIN = [
+    "IBM Plex Sans",
     "Atkinson Hyperlegible",
     "OpenDyslexic",
     "Segoe UI",
@@ -25,15 +27,33 @@ FALLBACK_CHAIN = [
     "DejaVu Sans",
 ]
 
+# Monospace chain for eyebrow/section labels and mono badges.
+MONO_FALLBACK_CHAIN = [
+    "IBM Plex Mono",
+    "Consolas",
+    "Courier New",
+]
+
+
+# Folders inside bundled font packages whose contents must not be loaded
+# (licensing) or are archive cruft.
+_SKIP_PARTS = {"For Professional Use Only", "__MACOSX"}
+
 
 def load_application_fonts(fonts_dir: Path) -> set[str]:
-    """Register every .ttf/.otf in *fonts_dir*; return the loaded family names."""
+    """Register every .ttf/.otf under *fonts_dir* (recursively); return families.
+
+    Skips license-restricted ("For Professional Use Only") and archive
+    (`__MACOSX`) subfolders so only freely usable fonts are registered.
+    """
     loaded: set[str] = set()
     if not fonts_dir.exists():
         logger.info("No bundled fonts dir at %s; using system fonts.", fonts_dir)
         return loaded
-    for path in sorted(fonts_dir.iterdir()):
+    for path in sorted(fonts_dir.rglob("*")):
         if path.suffix.lower() not in (".ttf", ".otf"):
+            continue
+        if _SKIP_PARTS.intersection(path.parts):
             continue
         font_id = QFontDatabase.addApplicationFont(str(path))
         if font_id == -1:
@@ -60,3 +80,16 @@ def resolve_family(preferred: str) -> str:
         if family in available:
             return family
     return sorted(available)[0]
+
+
+def resolve_mono(preferred: str = "IBM Plex Mono") -> str:
+    """Like :func:`resolve_family`, but down the monospace chain."""
+    available = set(QFontDatabase.families())
+    if not available:
+        return preferred
+    if preferred in available:
+        return preferred
+    for family in MONO_FALLBACK_CHAIN:
+        if family in available:
+            return family
+    return resolve_family(preferred)

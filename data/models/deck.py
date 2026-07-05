@@ -27,6 +27,7 @@ class Deck(Base):
     is_default: Mapped[bool] = mapped_column(Boolean, default=False)
     category: Mapped[str | None] = mapped_column(String(100), nullable=True)
     color: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    icon: Mapped[str | None] = mapped_column(String(8), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=now)
     modified_at: Mapped[datetime] = mapped_column(DateTime, default=now, onupdate=now)
 

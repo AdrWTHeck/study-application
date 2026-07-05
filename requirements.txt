@@ -3,13 +3,22 @@
 # pdfplumber, PyAudio) are listed now but only exercised in later phases.
 
 PyQt6>=6.5          # native UI
+PyQt6-WebEngine>=6.5  # QWebEngineView + QWebChannel for interactive PDF viewer
 SQLAlchemy>=2.0     # ORM / local SQLite
 PyMuPDF>=1.23       # PDF rendering (Phase 3)
 pdfplumber>=0.10    # PDF text extraction (Phase 3)
 rapidfuzz>=3.0      # fuzzy short-answer grading (Phase 4)
+fsrs>=6.3,<7        # FSRS-6 spaced-repetition scheduler (default engine; MIT, pure-Python, no heavy deps)
 pyttsx3>=2.90       # offline text-to-speech (TTS-01/02)
 PyAudio>=0.2        # audio capture/playback (Phase 2/3)
 nltk>=3.8           # WordNet dictionary fallback
+
+# Converter (EPUB ↔ PDF)
+ebooklib>=0.18
+reportlab>=4.0
+beautifulsoup4>=4.12
+lxml>=4.9
+Pillow>=10.0
 
 # Dev / test
 pytest>=8.0

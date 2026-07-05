@@ -22,3 +22,17 @@ class DeckRepository(BaseRepository[Deck]):
         return self.session.scalar(
             select(Deck).where(Deck.deck_type == deck_type, Deck.is_default.is_(True))
         )
+
+    def by_name_prefix(self, prefix: str, deck_type: str = "card") -> list[Deck]:
+        """Return all decks whose name equals *prefix* or starts with *prefix*+'::'."""
+        from domain.decks.hierarchy import SEP
+        return list(
+            self.session.scalars(
+                select(Deck)
+                .where(
+                    Deck.deck_type == deck_type,
+                    (Deck.name == prefix) | Deck.name.startswith(prefix + SEP),
+                )
+                .order_by(Deck.name)
+            )
+        )

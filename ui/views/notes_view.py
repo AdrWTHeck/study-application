@@ -9,9 +9,11 @@ from __future__ import annotations
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import (
     QCheckBox,
+    QComboBox,
     QHBoxLayout,
     QInputDialog,
     QLabel,
+    QLineEdit,
     QMenu,
     QMessageBox,
     QPushButton,
@@ -24,28 +26,60 @@ from app.context import AppContext
 from data.repositories.deck_repository import DeckRepository
 from data.repositories.note_repository import NoteRepository
 from domain.notes.note_service import NoteService
+from ui.a11y.contrast import contrast_ratio
+from ui.components.badges import StateBadges
+from ui.utils.layouts import apply_page_margins, clear_layout
 from ui.views.note_form import AddNoteDialog
 
-_STATE_LABEL = {"new": "New", "learning": "Learning", "relearning": "Learning", "review": "Review"}
+
+def _chip_text_color(hex_bg: str) -> str:
+    """Return white or near-black — whichever gives better contrast on hex_bg."""
+    try:
+        white = contrast_ratio("#ffffff", hex_bg)
+        black = contrast_ratio("#1a1b1e", hex_bg)
+        return "#ffffff" if white >= black else "#1a1b1e"
+    except Exception:
+        return "#ffffff"
+
+# In-deck filters: label → set of srs_states that match (None = all).
+_NOTE_FILTERS: list[tuple[str, set[str] | None]] = [
+    ("All cards", None),
+    ("New", {"new"}),
+    ("Learning", {"learning", "relearning"}),
+    ("Review", {"review"}),
+]
 
 
 class NotesView(QWidget):
     back = pyqtSignal()
     review_requested = pyqtSignal(int)
 
-    def __init__(self, context: AppContext, parent: QWidget | None = None) -> None:
+    def __init__(
+        self,
+        context: AppContext,
+        embedded: bool = False,
+        parent: QWidget | None = None,
+    ) -> None:
         super().__init__(parent)
         self._context = context
+        self._embedded = embedded
         self.setObjectName("Page")
         self.setAccessibleName("Notes")
         self._deck_id: int | None = None
         self._checks: dict[int, QCheckBox] = {}
 
         root = QVBoxLayout(self)
-        root.setContentsMargins(40, 24, 40, 24)
+        if embedded:
+            # Hosted inside the deck-detail pane, which owns the page margins,
+            # the deck title, and the Add note / Review actions.
+            root.setContentsMargins(0, 0, 0, 0)
+        else:
+            apply_page_margins(root, self._context)
         root.setSpacing(12)
 
-        header = QHBoxLayout()
+        self._header_host = QWidget()
+        header = QHBoxLayout(self._header_host)
+        header.setContentsMargins(0, 0, 0, 0)
         back_btn = QPushButton("← Decks")
         back_btn.setAccessibleName("Back to decks")
         back_btn.clicked.connect(self.back.emit)
@@ -63,7 +97,37 @@ class NotesView(QWidget):
         header.addStretch(1)
         header.addWidget(add_btn)
         header.addWidget(review_btn)
-        root.addLayout(header)
+        self._header_host.setVisible(not embedded)
+        root.addWidget(self._header_host)
+
+        # In-deck search + state filter.
+        tools = QHBoxLayout()
+        tools.setSpacing(8)
+        self._search = QLineEdit()
+        self._search.setObjectName("DeckSearch")
+        self._search.setPlaceholderText("Search cards in this deck…")
+        self._search.setAccessibleName("Search cards in this deck")
+        self._search.setClearButtonEnabled(True)
+        self._search.textChanged.connect(self.refresh)
+        tools.addWidget(self._search, 1)
+        self._filter = QComboBox()
+        self._filter.setAccessibleName("Filter cards by state")
+        for label, _states in _NOTE_FILTERS:
+            self._filter.addItem(label)
+        self._filter.currentIndexChanged.connect(self.refresh)
+        tools.addWidget(self._filter)
+        root.addLayout(tools)
+
+        summary_row = QHBoxLayout()
+        summary_row.setContentsMargins(0, 0, 0, 0)
+        self._count_label = QLabel("")
+        self._count_label.setObjectName("SettingsHint")
+        self._state_summary = StateBadges()
+        self._state_summary.setAccessibleName("Card counts by state for this deck")
+        summary_row.addWidget(self._count_label)
+        summary_row.addStretch(1)
+        summary_row.addWidget(self._state_summary)
+        root.addLayout(summary_row)
 
         self._bulk_bar = QWidget()
         bulk = QHBoxLayout(self._bulk_bar)
@@ -79,6 +143,21 @@ class NotesView(QWidget):
         bulk.addWidget(move_sel)
         bulk.addWidget(delete_sel)
         root.addWidget(self._bulk_bar)
+
+        if embedded:
+            # Mono column-header row (clay redesign notes table).
+            table_header = QWidget()
+            table_header.setObjectName("NotesTableHeader")
+            table_header.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+            th = QHBoxLayout(table_header)
+            th.setContentsMargins(16, 4, 16, 4)
+            col_card = QLabel("CARD")
+            col_card.setAccessibleName("Card column")
+            col_state = QLabel("STATE · FLAGS · ACTIONS")
+            col_state.setAccessibleName("State, flags and actions column")
+            th.addWidget(col_card, 1)
+            th.addWidget(col_state, 0, Qt.AlignmentFlag.AlignRight)
+            root.addWidget(table_header)
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
@@ -100,35 +179,65 @@ class NotesView(QWidget):
 
     def refresh(self) -> None:
         self._checks = {}
-        while self._list_layout.count():
-            item = self._list_layout.takeAt(0)
-            widget = item.widget()
-            if widget is not None:
-                widget.deleteLater()
+        clear_layout(self._list_layout)
         if self._context.db is None or self._deck_id is None:
             return
 
-        rows: list[tuple[int, str, str]] = []
+        query = self._search.text().strip().lower() if hasattr(self, "_search") else ""
+        wanted_states = (
+            _NOTE_FILTERS[self._filter.currentIndex()][1] if hasattr(self, "_filter") else None
+        )
+
+        rows: list[tuple[int, str, tuple[int, int, int], list]] = []
+        total = 0
+        deck_new = deck_learning = deck_review = 0
         with self._context.db.session() as session:
             for note in NoteRepository(session).for_deck(self._deck_id):
+                total += 1
                 values = note.values_by_field_name()
-                preview = " · ".join(v.strip() for v in values.values() if v.strip())[:90] or "(empty)"
-                counts: dict[str, int] = {}
+                full_text = " ".join(v.strip() for v in values.values() if v.strip())
+                preview = (" · ".join(v.strip() for v in values.values() if v.strip())[:90]
+                           or "(empty)")
+                states = {card.srs_state for card in note.cards}
+                n_new = n_learning = n_review = 0
                 for card in note.cards:
-                    label = _STATE_LABEL.get(card.srs_state, card.srs_state)
-                    counts[label] = counts.get(label, 0) + 1
-                state_text = " · ".join(f"{n} {k}" for k, n in counts.items()) or "no cards"
-                rows.append((note.id, preview, state_text))
+                    st = card.srs_state
+                    if st in ("learning", "relearning"):
+                        n_learning += 1
+                    elif st == "review":
+                        n_review += 1
+                    else:
+                        n_new += 1
+                deck_new += n_new
+                deck_learning += n_learning
+                deck_review += n_review
+                flags = [(f.name, f.color) for f in note.flags]
+
+                if query and query not in full_text.lower():
+                    continue
+                if wanted_states is not None and not (states & wanted_states):
+                    continue
+                rows.append((note.id, preview, (n_new, n_learning, n_review), flags))
+
+        if hasattr(self, "_count_label"):
+            if query or wanted_states is not None:
+                self._count_label.setText(f"Showing {len(rows)} of {total} cards")
+            else:
+                self._count_label.setText(f"{total} card{'s' if total != 1 else ''}")
+        if hasattr(self, "_state_summary"):
+            self._state_summary.set_counts(deck_new, deck_learning, deck_review)
 
         if not rows:
-            empty = QLabel("No notes in this deck yet. Add one to get started.")
+            msg = ("No cards match your search." if (query or wanted_states is not None)
+                   else "No notes in this deck yet. Add one to get started.")
+            empty = QLabel(msg)
             empty.setObjectName("PageSubtitle")
             self._list_layout.addWidget(empty)
-        for note_id, preview, state_text in rows:
-            self._list_layout.addWidget(self._note_row(note_id, preview, state_text))
+        for note_id, preview, counts, flags in rows:
+            self._list_layout.addWidget(self._note_row(note_id, preview, counts, flags))
         self._update_selection()
 
-    def _note_row(self, note_id: int, preview: str, state_text: str) -> QWidget:
+    def _note_row(self, note_id: int, preview: str, counts: tuple[int, int, int], flags: list) -> QWidget:
         row = QWidget()
         row.setObjectName("DeckRow")
         row.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
@@ -150,9 +259,17 @@ class NotesView(QWidget):
         text.setWordWrap(True)
         layout.addWidget(text, 1)
 
-        state = QLabel(state_text)
-        state.setObjectName("SettingsHint")
+        state = StateBadges(*counts)
         layout.addWidget(state)
+
+        for name, color in flags[:3]:
+            chip = QLabel(name)
+            chip.setAccessibleName(f"Flag: {name}")
+            chip.setStyleSheet(
+                f"background-color: {color}; color: {_chip_text_color(color)};"
+                " border-radius: 6px; padding: 1px 7px;"
+            )
+            layout.addWidget(chip)
 
         edit_btn = QPushButton("Edit")
         edit_btn.setAccessibleName("Edit note")
@@ -164,9 +281,16 @@ class NotesView(QWidget):
         menu = QMenu(self)
         menu.addAction("Edit", lambda: self._edit(note_id))
         menu.addAction("Move to deck…", lambda: self._move([note_id]))
+        menu.addAction("Set flags…", lambda: self._set_flags(note_id))
         menu.addSeparator()
         menu.addAction("Delete", lambda: self._delete([note_id]))
         menu.exec(row.mapToGlobal(pos))
+
+    def _set_flags(self, note_id: int) -> None:
+        from ui.views.flag_editor import FlagAssignDialog
+
+        if FlagAssignDialog(self._context, note_id, parent=self).exec():
+            self.refresh()
 
     # -- selection / bulk ---------------------------------------------------
 

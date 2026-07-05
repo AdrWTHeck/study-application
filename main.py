@@ -49,6 +49,16 @@ def main() -> int:
         )
         return 1
 
+    if startup.reset_from is not None:
+        QMessageBox.information(
+            None,
+            "StudyApp — database upgraded",
+            "Your previous study database was from an older version and could not be "
+            "read by this build. It has been safely archived to:\n\n"
+            f"{startup.reset_from}\n\n"
+            "A fresh database was created so the app can run.",
+        )
+
     tts = TTSService()
     tts.set_rate(int(settings.get("tts_rate")))
     # Kept referenced for the app's lifetime so the focus→speech hook stays live.

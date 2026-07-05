@@ -15,7 +15,7 @@ from PyQt6.QtWidgets import QApplication
 from core.settings import Settings
 from ui.theme import tokens as tk
 from ui.theme.fonts import resolve_family
-from ui.theme.qss_builder import build_qss
+from ui.theme.qss.builder import build_qss
 
 # Mode (the user-facing dual-mode switch) drives density.
 _MODE_DENSITY = {"accessibility": "comfortable", "advanced": "compact"}

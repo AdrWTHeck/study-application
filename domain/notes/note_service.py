@@ -12,6 +12,7 @@ from core.clock import now
 from data.models import Card, Note, NoteFieldValue, NoteType, Tag
 from data.repositories.note_repository import NoteRepository
 from data.repositories.note_type_repository import NoteTypeRepository
+from domain.search import indexer
 from domain.srs.mapping import apply_state
 from domain.srs.srs_base import SrsEngine
 
@@ -46,6 +47,7 @@ class NoteService:
 
         self._generate_cards(note, note_type)
         self.session.flush()
+        indexer.reindex_note(self.session, note)
         return note
 
     def update_values(self, note: Note, values: dict[str, str]) -> Note:
@@ -53,6 +55,12 @@ class NoteService:
             if field_value.field is not None and field_value.field.name in values:
                 field_value.value = values[field_value.field.name]
         note.modified_at = now()
+        self.session.flush()
+        indexer.reindex_note(self.session, note)
+        return note
+
+    def set_tags(self, note: Note, names: list[str]) -> Note:
+        note.tags = [self._get_or_create_tag(name) for name in names]
         self.session.flush()
         return note
 
@@ -62,11 +70,44 @@ class NoteService:
             card.deck_id = deck_id
         note.modified_at = now()
         self.session.flush()
+        indexer.reindex_note(self.session, note)  # title follows the deck name
         return note
 
     def delete_note(self, note: Note) -> None:
+        note_id = note.id
         self.session.delete(note)
         self.session.flush()
+        indexer.remove(self.session, "note", note_id)
+
+    def copy_notes_by_ids(self, note_ids: list[int], dst_deck_id: int) -> int:
+        """Copy specific notes into a deck as fresh cards. Returns the count copied."""
+        copied = 0
+        for note_id in dict.fromkeys(note_ids):
+            note = self.notes.get(note_id)
+            if note is None:
+                continue
+            values = note.values_by_field_name()
+            tags = [tag.name for tag in note.tags]
+            self.create_note(dst_deck_id, note.note_type_id, values, tags)
+            copied += 1
+        return copied
+
+    def copy_notes_to_deck(self, src_deck_id: int, dst_deck_id: int) -> int:
+        """Copy every note from one deck into another as fresh cards.
+
+        Field values and tags are preserved; scheduling is reset (the copies are
+        brand-new cards). Returns the number of notes copied.
+        """
+        source_notes = list(
+            self.session.scalars(select(Note).where(Note.deck_id == src_deck_id))
+        )
+        copied = 0
+        for note in source_notes:
+            values = note.values_by_field_name()
+            tags = [tag.name for tag in note.tags]
+            self.create_note(dst_deck_id, note.note_type_id, values, tags)
+            copied += 1
+        return copied
 
     def delete_note_by_id(self, note_id: int) -> None:
         note = self.notes.get(note_id)

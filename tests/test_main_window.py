@@ -32,3 +32,22 @@ def test_nav_buttons_have_accessible_names(qapp, tmp_path):
     window = _make_window(qapp, tmp_path)
     for dest, button in window._nav_buttons.items():
         assert button.accessibleName()  # SR-01: every control is named
+
+
+def test_ctrl_f_opens_search(qapp, tmp_path):
+    window = _make_window(qapp, tmp_path)
+    window._open_search()
+    assert window._stack.currentIndex() == window._pages[Destination.SEARCH]
+
+
+def test_content_width_varies_by_page(qapp, tmp_path):
+    window = _make_window(qapp, tmp_path)
+    window._navigate(Destination.SETTINGS)
+    focused = window._content_container.maximumWidth()
+    window._navigate(Destination.LIBRARY)
+    full = window._content_container.maximumWidth()
+    window._navigate(Destination.DASHBOARD)
+    balanced = window._content_container.maximumWidth()
+    # Workspace pages get more width than the focused settings form, and the
+    # dashboard sits between them.
+    assert focused < balanced < full

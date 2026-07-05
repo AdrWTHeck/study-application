@@ -26,10 +26,13 @@ dist/
 # Dev preview artifacts
 tools/_preview/
 
-# Font packages — only properly-licensed runtime files should be added,
-# placed directly in assets/fonts/. Bulk download packages are not committed.
+# Fonts: commit only the freely-redistributable runtime fonts placed directly
+# in assets/fonts/ (Atkinson Hyperlegible original — free for all use). Bulk
+# download packages and personal-use-only desktop fonts stay local, uncommitted.
 assets/fonts/**
 !assets/fonts/README.md
+!assets/fonts/*.ttf
+!assets/fonts/*.otf
 
 # OS / editor
 .DS_Store

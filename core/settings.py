@@ -21,7 +21,7 @@ DEFAULTS: dict[str, Any] = {
     "mode": "accessibility",                 # "accessibility" | "advanced"  (§2 dual mode)
     "theme": "dark",                         # dark | light | hc_dark | hc_light  (VIS-02)
     "font_scale": 1.0,                       # 1.0–2.0 global multiplier (VIS-01)
-    "font_family": "Atkinson Hyperlegible",  # dyslexia-friendly default (RDG-01)
+    "font_family": "IBM Plex Sans",          # bundled UI face; Atkinson Hyperlegible stays in the picker (RDG-01)
     "line_height": 1.5,                      # RDG-02
     "letter_spacing": 0.0,                   # RDG-02 (absolute px)
     "word_spacing": 0.0,                     # RDG-02 (absolute px)
@@ -31,7 +31,25 @@ DEFAULTS: dict[str, Any] = {
     "tts_voice_id": None,
     "onboarding_complete": False,            # ONB-01
     "short_answer_fuzzy_threshold": 80,      # Phase 4 grading
+    "scheduler": "fsrs",                      # SRS engine — FSRS is the only engine
+    "new_cards_per_session": 20,             # how many new cards a review session introduces
+    "dashboard_widgets": None,               # None ⇒ per-mode default board; else ordered list of widget keys
+    "dashboard_sticky_note": "",             # persisted sticky-note text (6.7)
+    "achievement_unlocked_border_color": "#d4af37",  # gold border on earned achievement tiles
+    "word_of_day_enabled": True,             # show a word of the day on the deadline forecast
+    "word_of_day_pool": [],                  # custom words ("word - definition"); empty ⇒ base pool
+    "word_of_day_categories": ["academic", "fun", "interesting"],  # which base categories to include
+    "related_cards_enabled": True,           # surface related cards after a test (AUT-01: opt-in reschedule only)
     "custom_colors": {},                     # palette overrides
+    # Pomodoro companion (§6.3)
+    "companion_enabled": True,
+    "companion_kind": "tree",               # "tree" | "pet"
+    "companion_name": "",                   # display name (empty = default label)
+    "pomodoro_focus_minutes": 25,
+    "pomodoro_break_minutes": 5,
+    "pomodoro_long_break_minutes": 15,
+    "pomodoro_long_break_after": 4,         # sessions before long break
+    "companion_reduced_motion": False,
 }
 
 

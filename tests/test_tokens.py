@@ -2,7 +2,7 @@ import pytest
 
 from ui.a11y.contrast import AA_NORMAL, AAA_NORMAL, contrast_ratio
 from ui.theme import tokens as tk
-from ui.theme.qss_builder import build_qss
+from ui.theme.qss.builder import build_qss
 
 ALL_THEMES = ["dark", "light", "hc_dark", "hc_light"]
 
@@ -34,6 +34,31 @@ def test_font_scale_increases_effective_size():
 def test_density_mapping():
     assert tk.build_tokens(density="comfortable").density.min_target >= 44
     assert tk.build_tokens(density="compact").density.name == "compact"
+
+
+def test_layout_axis_present_and_scales_with_density():
+    comfortable = tk.build_tokens(density="comfortable").layout
+    compact = tk.build_tokens(density="compact").layout
+    # The layout axis tracks density and tightens the shell in compact mode.
+    assert comfortable.name == "comfortable"
+    assert compact.name == "compact"
+    assert comfortable.topbar_height > 0
+    assert compact.topbar_height < comfortable.topbar_height
+    # Named content widths stay ordered narrow < focused < balanced < wide <= full.
+    for layout in (comfortable, compact):
+        assert layout.width_narrow < layout.width_focused
+        assert layout.width_focused < layout.width_balanced < layout.width_wide
+        assert layout.width_wide <= layout.width_full
+        assert layout.deck_pane_width > 0
+    # content_width() resolves known classes and falls back to balanced.
+    assert comfortable.content_width("narrow") == comfortable.width_narrow
+    assert comfortable.content_width("focused") == comfortable.width_focused
+    assert comfortable.content_width("full") == comfortable.width_full
+    assert comfortable.content_width("unknown") == comfortable.width_balanced
+
+
+def test_unknown_density_layout_falls_back_to_comfortable():
+    assert tk.build_tokens(density="nope").layout.name == "comfortable"
 
 
 def test_custom_color_override_applies():

@@ -9,7 +9,10 @@ class Destination(Enum):
     LIBRARY = "Library"
     CARDS = "Cards"
     TESTS = "Tests"
+    DEADLINES = "Deadlines"
+    ACHIEVEMENTS = "Achievements"
     SEARCH = "Search"
+    CONVERTER = "Converter"
     SETTINGS = "Settings"
 
     @property
@@ -24,7 +27,7 @@ PRIMARY: list[Destination] = [
     Destination.CARDS,
     Destination.TESTS,
 ]
-TOOLS: list[Destination] = [Destination.SEARCH]
+TOOLS: list[Destination] = [Destination.DEADLINES, Destination.ACHIEVEMENTS, Destination.SEARCH, Destination.CONVERTER]
 
 # Text glyph hints until real icons are added (kept simple + legible).
 ICON: dict[Destination, str] = {
@@ -32,7 +35,10 @@ ICON: dict[Destination, str] = {
     Destination.LIBRARY: "▦",
     Destination.CARDS: "▭",
     Destination.TESTS: "✓",
+    Destination.DEADLINES: "◷",
+    Destination.ACHIEVEMENTS: "🏅",
     Destination.SEARCH: "⌕",
+    Destination.CONVERTER: "⇄",
     Destination.SETTINGS: "⚙",
 }
 
@@ -42,6 +48,9 @@ DESCRIPTION: dict[Destination, str] = {
     Destination.LIBRARY: "Your PDF sources — read, highlight, take notes, make cards.",
     Destination.CARDS: "Your decks and flashcards — review with spaced repetition.",
     Destination.TESTS: "Your tests — build questions, take quizzes, review results.",
+    Destination.DEADLINES: "Exam deadlines — set dates, track daily targets, and stay on schedule.",
+    Destination.ACHIEVEMENTS: "Achievement badges for milestones in study, decks, and reviews.",
     Destination.SEARCH: "Search across everything — sources, cards, and questions.",
+    Destination.CONVERTER: "Convert files between EPUB and PDF formats.",
     Destination.SETTINGS: "Accessibility, appearance, and study preferences.",
 }

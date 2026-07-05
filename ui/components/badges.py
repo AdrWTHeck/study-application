@@ -16,14 +16,23 @@ class StateBadges(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(10)
         self._labels: dict[str, QLabel] = {}
+        # Rounded state pills (clay redesign); each carries its label text,
+        # never colour alone (VIS-03). The [badge] property is kept for any
+        # remaining flat-text QSS rules.
+        pill_names = {"new": "StatePillNew", "learning": "StatePillLearning",
+                      "review": "StatePillReview"}
         for kind in ("new", "learning", "review"):
             label = QLabel()
+            label.setObjectName(pill_names[kind])
             label.setProperty("badge", kind)
             layout.addWidget(label)
             self._labels[kind] = label
         self.set_counts(new, learning, review)
 
     def set_counts(self, new: int, learning: int, review: int) -> None:
-        self._labels["new"].setText(f"{new} new")
-        self._labels["learning"].setText(f"{learning} learning")
-        self._labels["review"].setText(f"{review} review")
+        # Only show buckets that have cards, so a typical single-card note reads
+        # "1 new" rather than "1 new · 0 learning · 0 review".
+        for kind, value in (("new", new), ("learning", learning), ("review", review)):
+            label = self._labels[kind]
+            label.setText(f"{value} {kind}")
+            label.setVisible(value > 0)
